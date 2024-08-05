@@ -1,0 +1,10 @@
+ffmpeg-python
+SpeechRecognition
+streamlit
+python-dotenv
+langchain
+langchain_core
+langchain_openai
+langchain_community
+#sudo apt update
+#sudo apt install ffmpeg
