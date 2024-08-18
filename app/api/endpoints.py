@@ -13,8 +13,17 @@ import logging
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
+
+def verify_token(token: str):
+    if token != Settings.HARD_CODED_TOKEN:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authentication credentials"
+        )
+        
 @router.post("/upload-video/", response_model=TranscriptionResponse)
-async def upload_video(video: UploadFile = File(...)):
+async def upload_video(video: UploadFile = File(...),
+    token: str = Depends(verify_token)):
     try:
         # Extract audio from the uploaded video and save it to the temp file
         temp_audio_path = AudioService.extract_audio_from_video(video)
@@ -55,7 +64,8 @@ async def upload_video(video: UploadFile = File(...)):
 @router.post("/evaluate-response/", response_model=dict())
 async def evaluate_response(
     request: InterviewReviewRequest,
-    interview_review_service: InterviewReviewService = Depends(get_interview_review_service)
+    interview_review_service: InterviewReviewService = Depends(get_interview_review_service),
+    token: str = Depends(verify_token)
 ):
 
     review = interview_review_service.generate_review(

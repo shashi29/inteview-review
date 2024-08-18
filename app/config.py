@@ -12,3 +12,5 @@ class Settings:
     TEMP_DIR=os.getenv('TEMP_DIR')
     WHISPER_MODEL=os.getenv('WHISPER_MODEL')
     AUDIO_MODEL=os.getenv('AUDIO_MODEL')
+    
+    HARD_CODED_TOKEN=os.getenv('HARD_CODED_TOKEN')

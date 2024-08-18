@@ -7,16 +7,8 @@ langchain_core
 langchain_openai
 langchain_community
 whisper
-#sudo apt update
-#sudo apt install ffmpeg
 fastapi
 uvicorn
 python-multipart
-ffmpeg-python
-SpeechRecognition
-openai-whisper
 langchain
 langchain-openai
-pydantic[dotenv]
-pyjwt
-passlib[bcrypt]
