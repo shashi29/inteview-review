@@ -18,3 +18,5 @@ openai-whisper
 langchain
 langchain-openai
 pydantic[dotenv]
+pyjwt
+passlib[bcrypt]

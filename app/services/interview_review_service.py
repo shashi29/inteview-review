@@ -28,7 +28,7 @@ class InterviewReview(BaseModel):
 
 class InterviewReviewService:
     def __init__(self):
-        self.model = ChatOpenAI(api_key=Settings.OPENAI_API_KEY, temperature=0)
+        self.model = ChatOpenAI(api_key=Settings.OPENAI_API_KEY, temperature=Settings.OPENAI_TEMPERATURE, model_name=Settings.OPEANI_MODEL)
         self.parser = JsonOutputParser(pydantic_object=InterviewReview)
         
         self.prompt = PromptTemplate(

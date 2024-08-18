@@ -64,5 +64,4 @@ async def evaluate_response(
         interview_question=request.interview_question,
         interview_transcription=request.interview_transcription
     )
-    print(review)
     return review#InterviewReviewResponse(review=review)
