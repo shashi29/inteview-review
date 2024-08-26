@@ -7,7 +7,9 @@ load_dotenv()
 class Settings:
     OPENAI_API_KEY=os.getenv('OPENAI_API_KEY')
     OPENAI_TEMPERATURE=os.getenv('OPENAI_TEMPERATURE')
-    OPEANI_MODEL=os.getenv('OPEANI_MODEL')
+    OPENAI_MODEL=os.getenv('OPENAI_MODEL')
+    OPENAI_TOP_P=os.getenv('OPENAI_TOP_P')
+    
     
     TEMP_DIR=os.getenv('TEMP_DIR')
     WHISPER_MODEL=os.getenv('WHISPER_MODEL')
