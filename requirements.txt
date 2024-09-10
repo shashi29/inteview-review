@@ -12,3 +12,4 @@ uvicorn
 python-multipart
 langchain
 langchain-openai
+diskcache

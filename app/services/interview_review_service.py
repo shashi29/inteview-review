@@ -89,7 +89,7 @@ class InterviewReviewService:
         self.chain = self.prompt | self.model | self.parser
         
         # Initialize cache with JSONDisk
-        cache_dir = os.path.join(os.getcwd(), 'interview_cache')
+        cache_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'interview_cache')
         self.cache = Cache(directory=cache_dir, disk=JSONDisk, disk_compress_level=6)
 
     def generate_review(self, job_profile: str, candidate_name: str, interview_question: str, interview_transcription: str) -> InterviewReview:
@@ -100,7 +100,7 @@ class InterviewReviewService:
         cached_result = self.cache.get(cache_key)
         if cached_result:
             logger.info("Retrieved result from cache")
-            return cached_result
+            return InterviewReview(**cached_result)
         
         # If not in cache, generate the review
         logger.info("Generating new review using API")
@@ -119,4 +119,4 @@ class InterviewReviewService:
     def _create_cache_key(self, job_profile: str, candidate_name: str, interview_question: str, interview_transcription: str) -> str:
         # Create a unique key based on input parameters
         key_data = f"{job_profile}|{candidate_name}|{interview_question}|{interview_transcription}"
-        return hash(key_data)
+        return zlib.adler32(key_data.encode())
