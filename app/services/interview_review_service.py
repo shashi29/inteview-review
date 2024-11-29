@@ -85,7 +85,7 @@ class InterviewReviewService:
             Transcript: {interview_transcription}
 
             Ensure all scores are on a scale of 1-5. The overall_score should be an average of the other scores, rounded to one decimal place. Include an assessment of how well the candidate understood and addressed the specific interview question.
-            Return output in json format.
+            Return output in json format only.
             """,
             input_variables=["candidate_name", "job_profile", "interview_question", "interview_transcription"],
             partial_variables={"format_instructions": self.parser.get_format_instructions()}
@@ -94,10 +94,10 @@ class InterviewReviewService:
         self.chain = self.prompt | self.model | self.parser
         
         # Initialize cache with JSONDisk
-        cache_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'interview_cache')
+        cache_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '29112024_interview_cache')
         self.cache = Cache(directory=cache_dir, disk=JSONDisk, disk_compress_level=6)
 
-    def generate_review(self, job_profile: str, candidate_name: str, interview_question: str, interview_transcription: str) -> InterviewReview:
+    def generate_review(self, job_profile: str, candidate_name: str, interview_question: str, interview_transcription: str, request_id: str) -> InterviewReview:
         # Create a unique key for caching
         # cache_key = self._create_cache_key(job_profile, candidate_name, interview_question, interview_transcription)
         
@@ -115,9 +115,10 @@ class InterviewReviewService:
             "interview_question": interview_question,
             "interview_transcription": interview_transcription
         })
+        review['request_id'] = request_id
         
-        # Cache the result
-        # self.cache.set(cache_key, review)
+        #Cache the result
+        #self.cache.set(cache_key, review)
         
         return review
 

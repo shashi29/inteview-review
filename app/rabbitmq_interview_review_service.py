@@ -182,25 +182,25 @@ class ProcessingService:
         try:
             logger.info(f"Processing message: {message}")
             
-            self.log_event(
-                service_name="interview-review-service",
-                cid=cid,
-                organization="",
-                status=ProcessingStatus.STARTED,
-                details=message
-            )
+            # self.log_event(
+            #     service_name="interview-review-service",
+            #     cid=cid,
+            #     organization="",
+            #     status=ProcessingStatus.STARTED,
+            #     details=message
+            # )
 
             # Process the document
             result_flag = self._process_single_document(message, local_input_path, local_output_path)
             
             # Log success and send result
-            self.log_event(
-                service_name="interview-review-service",
-                cid=cid,
-                organization="",
-                status=ProcessingStatus.SUCCESS,
-                details=message
-            )
+            # self.log_event(
+            #     service_name="interview-review-service",
+            #     cid=cid,
+            #     organization="",
+            #     status=ProcessingStatus.SUCCESS,
+            #     details=message
+            # )
             
             logger.info(f"Successfully processed document for CID: {cid}")
 
@@ -235,9 +235,7 @@ class ProcessingService:
         interview_question = message.get('interview_question')
         interview_transcription = message.get('interview_transcription')
 
-        candidate_response = self.interview_service.generate_review(job_profile, candidate_name, interview_question, interview_transcription)
-        print(candidate_response)
-        candidate_response['request_id'] = request_id
+        candidate_response = self.interview_service.generate_review(job_profile, candidate_name, interview_question, interview_transcription, request_id)
         
         # Store the candidate response in Redis without expiration
         self.redis_client.client.hmset(f"interview_response:{request_id}", {

@@ -1,16 +1,28 @@
+
 import json
 from typing import Dict, Any
 
 import uvicorn
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Security
+from fastapi.security import APIKeyHeader
 from pydantic import BaseModel
+from typing import Optional
 
-from rabbitmq_interview_review_service import ProcessingService, ServiceConfig,ProcessingStatus 
+from rabbitmq_interview_review_service import ProcessingService, ServiceConfig, ProcessingStatus 
+from generate_interview_question import InterviewQuestionService
 from utils.rabbitmq_utils import RabbitMQClient
 import logging
+import os
 
-# Create a router for better modularity
-# interview_router = APIRouter(prefix="/interview", tags=["Interview"])
+# Security Constants
+SECURITY_CONSTANTS = {
+    "API_KEY_HEADER_NAME": "X-API-Key",
+    "MAX_REQUEST_BODY_SIZE": 10 * 1024 * 1024,  # 10 MB
+    "REQUEST_TIMEOUT_SECONDS": 30,
+    "MAX_CONCURRENT_REQUESTS": 100,
+    "RATE_LIMIT_PER_MINUTE": 60,
+    "REDIS_RESPONSE_EXPIRY_SECONDS": 3600  # 1 hour
+}
 
 # Configure logging
 logging.basicConfig(
@@ -19,14 +31,55 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+class InterviewRequest(BaseModel):
+    job_title: str
+    experience: str
+    skills: str
+    job_description: str
+    number_of_questions: Optional[int] = 3
+    question_level: Optional[str] = "intermediate"
+    
 class InterviewSubmissionRequest(BaseModel):
+    """
+    Pydantic model for interview submission request.
+    
+    Attributes:
+        request_id (str): Unique identifier for the submission.
+        job_profile (str): Profile for which interview is conducted.
+        candidate_name (str): Name of the candidate.
+        interview_question (str): Main interview question.
+        interview_transcription (str): Full transcription of the interview.
+    """
     request_id: str
     job_profile: str
     candidate_name: str
     interview_question: str
     interview_transcription: str
 
-app = FastAPI(title="Interview Review Service")
+# API Key authentication
+api_key_header = APIKeyHeader(name=SECURITY_CONSTANTS["API_KEY_HEADER_NAME"])
+
+def validate_api_key(api_key: str = Security(api_key_header)):
+    """
+    Validate the provided API key against expected value.
+    
+    Args:
+        api_key (str): API key to validate.
+    
+    Raises:
+        HTTPException: If API key is invalid.
+    """
+    expected_api_key = os.getenv('HARD_CODED_TOKEN', 'default_secure_key')
+    if api_key != expected_api_key:
+        raise HTTPException(status_code=403, detail="Invalid API Key")
+
+app = FastAPI(
+    title="Interview Review Service",
+    description="Secure service for submitting and retrieving interview reviews",
+    docs_url="/docs",
+    redoc_url="/redoc"
+)
+
 config = ServiceConfig()
 processing_service = ProcessingService()
 output_queue = RabbitMQClient(
@@ -36,9 +89,25 @@ output_queue = RabbitMQClient(
     config.rabbitmq_pass
 )
 
-@app.post("/submit-interview")
+@app.post("/submit-interview", dependencies=[Security(validate_api_key)], tags=["Interview Score Service"])
 async def submit_interview(request: InterviewSubmissionRequest):
+    """
+    Submit an interview for processing.
+    
+    Args:
+        request (InterviewSubmissionRequest): Details of the interview submission.
+    
+    Returns:
+        dict: Submission status and request ID.
+    
+    Raises:
+        HTTPException: If submission fails.
+    """
     try:
+        # Validate request size
+        if len(request.interview_transcription) > SECURITY_CONSTANTS["MAX_REQUEST_BODY_SIZE"]:
+            raise HTTPException(status_code=413, detail="Request payload too large")
+        
         # Prepare message for queue
         message = {
             "request_id": request.request_id,
@@ -57,18 +126,22 @@ async def submit_interview(request: InterviewSubmissionRequest):
             "request_id": request.request_id
         }
     except Exception as e:
+        logger.error(f"Interview submission error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/interview-response/{request_id}")
+@app.get("/interview-response/{request_id}", dependencies=[Security(validate_api_key)], tags=["Interview Score Service"])
 async def get_interview_response(request_id: str):
     """
-    Retrieve interview response by request ID
+    Retrieve interview response by request ID.
     
     Args:
-        request_id (str): Unique identifier for the interview response
+        request_id (str): Unique identifier for the interview response.
     
     Returns:
-        Dict[str, Any]: Parsed interview response
+        Dict[str, Any]: Parsed interview response.
+    
+    Raises:
+        HTTPException: If response retrieval fails or no response found.
     """
     try:
         # Retrieve Redis data
@@ -124,36 +197,40 @@ async def get_interview_response(request_id: str):
             detail="Internal server error occurred while retrieving interview response"
         )
         
-# async def get_interview_response(request_id: str):
-#     response_data = processing_service.redis_client.client.hgetall(f"interview_response:{request_id}")
-    
+@app.post("/generate-interview-questions/",  tags=["Generate Interview Questions"] , dependencies=[Security(validate_api_key)])
+async def generate_questions(request: InterviewRequest):
+    try:
+        questions = InterviewQuestionService().generate_interview_questions(
+            job_title=request.job_title,
+            experience=request.experience,
+            skills=request.skills,
+            job_description=request.job_description,
+            number_of_questions=request.number_of_questions,
+            question_level=request.question_level,
+        )
+        return {"questions": questions}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))        
 
-#     if not response_data:
-#         return None
-    
-#     # Convert the Redis response to a more usable dictionary
-#     decoded_response = {}
-#     for key, value in response_data.items():
-#         # Decode key and value
-#         decoded_key = key.decode('utf-8')
-#         decoded_value = value.decode('utf-8')
-        
-#         # Special handling for specific keys
-#         if decoded_key == 'request_id':
-#             decoded_response[decoded_key] = decoded_value
-#         else:
-#             try:
-#                 # Try to parse JSON for complex types
-#                 decoded_response[decoded_key] = json.loads(decoded_value)
-#             except json.JSONDecodeError:
-#                 # If JSON parsing fails, store as string
-#                 decoded_response[decoded_key] = decoded_value
-    
-    
-#     return response_data
 
+@app.get("/health", tags=["Health"], dependencies=[Security(validate_api_key)])
+async def health_check():
+    """
+    Health check endpoint to verify if the service is running.
+    """
+    try:
+        # Add any additional checks here (e.g., database connection, third-party service availability)
+        return {"status": "healthy", "message": "Service is up and running"}
+    except Exception as e:
+        return {"status": "unhealthy", "message": str(e)}
+    
 def start_api_server():
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    """
+    Start the FastAPI server using Uvicorn.
+    
+    Runs the server on all interfaces at port 8082.
+    """
+    uvicorn.run(app, host="0.0.0.0", port=8082)
 
 if __name__ == "__main__":
     start_api_server()
