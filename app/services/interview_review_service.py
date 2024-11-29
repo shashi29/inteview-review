@@ -6,14 +6,16 @@ from langchain_core.output_parsers import JsonOutputParser
 from langchain_core.prompts import PromptTemplate
 from langchain_core.pydantic_v1 import BaseModel, Field
 from langchain_openai import ChatOpenAI
-from app.config import Settings
+# from app.config import Settings
 from typing import List
 from diskcache import Cache, Disk, UNKNOWN
+from dotenv import load_dotenv
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+load_dotenv()
 
 class TranscriptAnalysis(BaseModel):
     question_relevance: str = Field(description="Assessment of how well the answer relates to the question")
@@ -64,10 +66,12 @@ class JSONDisk(Disk):
 
 class InterviewReviewService:
     def __init__(self):
-        self.model = ChatOpenAI(api_key=Settings.OPENAI_API_KEY,
-                                temperature=Settings.OPENAI_TEMPERATURE,
-                                model_name=Settings.OPENAI_MODEL,
-                                top_p=Settings.OPENAI_TOP_P)
+        self.model = ChatOpenAI(api_key=os.getenv('OPENAI_API_KEY'),
+                                temperature=os.getenv('OPENAI_TEMPERATURE'),
+                                model_name=os.getenv('OPENAI_MODEL'),
+                                top_p=os.getenv('OPENAI_TOP_P'),
+                                model_kwargs={ "response_format": { "type": "json_object" } })
+        
         self.parser = JsonOutputParser(pydantic_object=InterviewReview)
         
         self.prompt = PromptTemplate(
@@ -81,6 +85,7 @@ class InterviewReviewService:
             Transcript: {interview_transcription}
 
             Ensure all scores are on a scale of 1-5. The overall_score should be an average of the other scores, rounded to one decimal place. Include an assessment of how well the candidate understood and addressed the specific interview question.
+            Return output in json format.
             """,
             input_variables=["candidate_name", "job_profile", "interview_question", "interview_transcription"],
             partial_variables={"format_instructions": self.parser.get_format_instructions()}
@@ -94,13 +99,13 @@ class InterviewReviewService:
 
     def generate_review(self, job_profile: str, candidate_name: str, interview_question: str, interview_transcription: str) -> InterviewReview:
         # Create a unique key for caching
-        cache_key = self._create_cache_key(job_profile, candidate_name, interview_question, interview_transcription)
+        # cache_key = self._create_cache_key(job_profile, candidate_name, interview_question, interview_transcription)
         
-        # Try to get the result from cache
-        cached_result = self.cache.get(cache_key)
-        if cached_result:
-            logger.info("Retrieved result from cache")
-            return InterviewReview(**cached_result)
+        # # Try to get the result from cache
+        # cached_result = self.cache.get(cache_key)
+        # if cached_result:
+        #     logger.info("Retrieved result from cache")
+        #     return InterviewReview(**cached_result)
         
         # If not in cache, generate the review
         logger.info("Generating new review using API")
@@ -112,7 +117,7 @@ class InterviewReviewService:
         })
         
         # Cache the result
-        self.cache.set(cache_key, review)
+        # self.cache.set(cache_key, review)
         
         return review
 

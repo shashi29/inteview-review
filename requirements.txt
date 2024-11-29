@@ -13,3 +13,16 @@ python-multipart
 langchain
 langchain-openai
 diskcache
+fastapi
+uvicorn
+pika
+moviepy
+google-cloud-speech  # For GCP transcription
+SpeechRecognition
+pydantic
+python-dotenv
+uuid
+typing-extensions
+gunicorn
+confluent-kafka
+redis==5.2.0
