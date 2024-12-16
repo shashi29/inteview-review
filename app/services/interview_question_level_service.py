@@ -118,6 +118,7 @@ class InterviewQuestionReviewService:
 
 class InterviewOverallReview(BaseModel):
     summary: list = Field(description="Overall summary of the interview")
+    areas_for_improvement: List[str] = Field(description="List of areas where the candidate can improve")
     recommendation: str = Field(description="Final recommendation regarding the candidate")
 
 class InterviewOverallReviewService:
@@ -194,13 +195,14 @@ class InterviewOverallReviewService:
 
         # Calculate average percentage
         average_percentage = total_percentage / len(data)
+        average_percentage = round(average_percentage, 2)
 
         # Calculate overall performance
         overall_performance = self.calculate_performance(average_percentage)
 
         # Prepare the result as a dictionary
         result = {
-            "total_score": total_score,
+            "total_score": round(total_score, 2),
             "average_percentage": average_percentage,
             "overall_performance": overall_performance,
             "technologies": list(technologies),
@@ -262,8 +264,50 @@ class InterviewOverallReviewService:
 
 
 if __name__ == "__main__":
-    service = InterviewQuestionReviewService()
+    service1 = InterviewQuestionReviewService()
+    service2 = InterviewOverallReviewService()
+    
+    response = {
+    "id": "6749d0cebb9525f2254a7160",
+    "profile": "student",
+    "interview": [
+        {
+        "qid": "123e4567-e89b-12d3-a456-426614174001",
+        "level": "intermediate",
+        "technologies": ["Java"],
+        "tags": ["thread-safety", "synchronized", "Java basics"],
+        "point": 2,
+        "questionText": "Explain the use of the synchronized keyword in Java and how it ensures thread safety.",
+        "questionExplanation": "The synchronized keyword in Java is used to control access to critical sections of code, ensuring thread safety by preventing multiple threads from accessing the same resource simultaneously.",
+        "transcriptText": "The synchronized keyword is directly related to thread safety but lacks examples and in-depth explanation."
+        },
+        {
+        "qid": "123e4567-e89b-12d3-a456-426614174002",
+        "level": "advanced",
+        "technologies": ["Java"],
+        "tags": ["concurrency", "thread-pooling", "Java performance"],
+        "point": 3,
+        "questionText": "What is the purpose of thread pooling in Java, and how does it improve application performance?",
+        "questionExplanation": "Thread pooling in Java is a technique to manage threads efficiently by reusing a pool of worker threads to execute multiple tasks, reducing the overhead of creating and destroying threads repeatedly.",
+        "transcriptText": "Thread pooling optimizes resource usage but requires understanding of thread management to avoid deadlocks."
+        }
+    ]
+    }
 
+
+        
+    question_level_list = list()
+    for interview_question_details in response["interview"]:
+        interview_question_review = service1.generate_review(interview_question_details)
+        question_level_list.append(interview_question_review)
+        
+    final_response = service2.generate_review(question_level_list)
+    
+    final_response["id"] = response["id"]
+    final_response["profile"] = response["profile"]
+    
+    print(final_response)
+    
     #Step 1    
     # request = {
     # "qid": "123e4567-e89b-12d3-a456-426614174002",
@@ -289,10 +333,10 @@ if __name__ == "__main__":
     # print(service.generate_review(request))
     
     #Step 2
-    response = [{'interview_question': 'What is the purpose of thread pooling in Java, and how does it improve application performance?', 'transcript_analysis': {'question_relevance': "The candidate's response is relevant as it addresses the purpose of thread pooling in Java.", 'answer_completeness': 'The answer is somewhat incomplete as it does not fully explain how thread pooling improves application performance beyond optimizing resource usage.', 'content_analysis': 'The candidate mentions optimizing resource usage and the need for understanding thread management, which indicates some knowledge of the topic but lacks depth.', 'communication_skills': 'The candidate communicates their ideas clearly but could elaborate more on the concepts.', 'critical_thinking': 'The response shows some critical thinking regarding the implications of thread management but lacks a comprehensive analysis.', 'professional_demeanor': 'The candidate maintains a professional tone throughout the response.', 'technical_proficiency': 'The candidate demonstrates a basic understanding of thread pooling but does not delve into technical details or examples.', 'soft_skills': 'The candidate exhibits good soft skills by articulating their thoughts clearly.', 'cultural_fit': "The candidate's ability to communicate technical concepts suggests a potential fit for a collaborative environment."}, 'areas_for_improvement': ['Provide a more detailed explanation of how thread pooling improves application performance.', 'Include examples or scenarios where thread pooling is beneficial.', 'Discuss potential pitfalls or challenges associated with thread pooling, such as deadlocks.'], 'scoring': {'question_relevance': 8, 'answer_completeness': 5, 'content_analysis': 6, 'communication_skills': 7, 'critical_thinking': 5, 'professional_demeanor': 8, 'technical_proficiency': 6, 'soft_skills': 7, 'cultural_fit': 7}, 'average_points': 1.97, 'average_percentage': 65.56, 'qid': '123e4567-e89b-12d3-a456-426614174002', 'level': 'advanced', 'technologies': ['Java'], 'tags': ['concurrency', 'thread-pooling', 'Java performance']},{'interview_question': 'Explain the use of the synchronized keyword in Java and how it ensures thread safety.', 'transcript_analysis': {'question_relevance': "The candidate's response was relevant to the question, directly addressing the use of the synchronized keyword in relation to thread safety.", 'answer_completeness': 'The answer was incomplete as it lacked examples and a deeper explanation of the concept.', 'content_analysis': 'The candidate mentioned the relationship between the synchronized keyword and thread safety but did not elaborate on its implementation or provide practical examples.', 'communication_skills': 'The candidate communicated their thoughts clearly but could have structured their answer better to enhance understanding.', 'critical_thinking': 'The candidate demonstrated basic critical thinking by identifying the importance of the synchronized keyword but did not explore its implications or alternatives.', 'professional_demeanor': 'The candidate maintained a professional demeanor throughout the interview.', 'technical_proficiency': 'The candidate showed a basic understanding of the synchronized keyword but lacked depth in technical knowledge.', 'soft_skills': 'The candidate exhibited good soft skills, such as maintaining eye contact and being polite, but could improve on engaging the interviewer more effectively.', 'cultural_fit': "The candidate's approach seemed to align with the company's values of collaboration and knowledge sharing, but the lack of depth in the answer may raise concerns."}, 'areas_for_improvement': ['Provide examples to illustrate technical concepts.', 'Expand on explanations to demonstrate deeper understanding.', 'Engage more with the interviewer to clarify points.'], 'scoring': {'question_relevance': 8, 'answer_completeness': 5, 'content_analysis': 6, 'communication_skills': 7, 'critical_thinking': 5, 'professional_demeanor': 8, 'technical_proficiency': 6, 'soft_skills': 7, 'cultural_fit': 7}, 'average_points': 1.31, 'average_percentage': 65.56, 'qid': '123e4567-e89b-12d3-a456-426614174001', 'level': 'intermediate', 'technologies': ['Java'], 'tags': ['thread-safety', 'synchronized', 'Java basics']}]
+    # response = [{'interview_question': 'What is the purpose of thread pooling in Java, and how does it improve application performance?', 'transcript_analysis': {'question_relevance': "The candidate's response is relevant as it addresses the purpose of thread pooling in Java.", 'answer_completeness': 'The answer is somewhat incomplete as it does not fully explain how thread pooling improves application performance beyond optimizing resource usage.', 'content_analysis': 'The candidate mentions optimizing resource usage and the need for understanding thread management, which indicates some knowledge of the topic but lacks depth.', 'communication_skills': 'The candidate communicates their ideas clearly but could elaborate more on the concepts.', 'critical_thinking': 'The response shows some critical thinking regarding the implications of thread management but lacks a comprehensive analysis.', 'professional_demeanor': 'The candidate maintains a professional tone throughout the response.', 'technical_proficiency': 'The candidate demonstrates a basic understanding of thread pooling but does not delve into technical details or examples.', 'soft_skills': 'The candidate exhibits good soft skills by articulating their thoughts clearly.', 'cultural_fit': "The candidate's ability to communicate technical concepts suggests a potential fit for a collaborative environment."}, 'areas_for_improvement': ['Provide a more detailed explanation of how thread pooling improves application performance.', 'Include examples or scenarios where thread pooling is beneficial.', 'Discuss potential pitfalls or challenges associated with thread pooling, such as deadlocks.'], 'scoring': {'question_relevance': 8, 'answer_completeness': 5, 'content_analysis': 6, 'communication_skills': 7, 'critical_thinking': 5, 'professional_demeanor': 8, 'technical_proficiency': 6, 'soft_skills': 7, 'cultural_fit': 7}, 'average_points': 1.97, 'average_percentage': 65.56, 'qid': '123e4567-e89b-12d3-a456-426614174002', 'level': 'advanced', 'technologies': ['Java'], 'tags': ['concurrency', 'thread-pooling', 'Java performance']},{'interview_question': 'Explain the use of the synchronized keyword in Java and how it ensures thread safety.', 'transcript_analysis': {'question_relevance': "The candidate's response was relevant to the question, directly addressing the use of the synchronized keyword in relation to thread safety.", 'answer_completeness': 'The answer was incomplete as it lacked examples and a deeper explanation of the concept.', 'content_analysis': 'The candidate mentioned the relationship between the synchronized keyword and thread safety but did not elaborate on its implementation or provide practical examples.', 'communication_skills': 'The candidate communicated their thoughts clearly but could have structured their answer better to enhance understanding.', 'critical_thinking': 'The candidate demonstrated basic critical thinking by identifying the importance of the synchronized keyword but did not explore its implications or alternatives.', 'professional_demeanor': 'The candidate maintained a professional demeanor throughout the interview.', 'technical_proficiency': 'The candidate showed a basic understanding of the synchronized keyword but lacked depth in technical knowledge.', 'soft_skills': 'The candidate exhibited good soft skills, such as maintaining eye contact and being polite, but could improve on engaging the interviewer more effectively.', 'cultural_fit': "The candidate's approach seemed to align with the company's values of collaboration and knowledge sharing, but the lack of depth in the answer may raise concerns."}, 'areas_for_improvement': ['Provide examples to illustrate technical concepts.', 'Expand on explanations to demonstrate deeper understanding.', 'Engage more with the interviewer to clarify points.'], 'scoring': {'question_relevance': 8, 'answer_completeness': 5, 'content_analysis': 6, 'communication_skills': 7, 'critical_thinking': 5, 'professional_demeanor': 8, 'technical_proficiency': 6, 'soft_skills': 7, 'cultural_fit': 7}, 'average_points': 1.31, 'average_percentage': 65.56, 'qid': '123e4567-e89b-12d3-a456-426614174001', 'level': 'intermediate', 'technologies': ['Java'], 'tags': ['thread-safety', 'synchronized', 'Java basics']}]
     
     service = InterviewOverallReviewService()
-    print(service.generate_review(response))
+    # print(service.generate_review(response))
     
     
     
