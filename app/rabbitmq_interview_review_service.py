@@ -13,6 +13,7 @@ import redis
 from dotenv import load_dotenv
 from utils.rabbitmq_utils import RabbitMQClient
 from services.interview_review_service import InterviewReviewService
+from services.interview_question_level_service import InterviewQuestionReviewService, InterviewOverallReviewService
 
 import zlib
 import numpy as np
@@ -28,6 +29,33 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+
+import requests
+
+def send_ai_result(data):
+    """
+    Sends a PATCH request to the specified URL with the provided data.
+
+    Args:
+        data (dict): The JSON data to send in the request body.
+
+    Returns:
+        Response: The response from the API.
+    """
+    url = f"https://demo.exams.api.jobprep.io/exam/api/interview-activity/external/ai-result/{data['id']}"
+    headers = {
+        "Content-Type": "application/json",
+        "X-API-KEY": "4de1c3b5a83f3d3eb0e5f7d2422ecd5c653824e34feef35ee28a65f340be449f"
+    }
+
+    response = requests.patch(url, headers=headers, json=data)
+
+    # Check if the request was successful
+    if response.status_code == 200:
+        print("Request successful:", response.json())
+    else:
+        print("Request failed:", response.status_code, response.text)
+    
 class ProcessingStatus(Enum):
     """Enhanced enum for processing status"""
     STARTED = "STARTED"
@@ -176,8 +204,8 @@ class ProcessingService:
         message_id = str(uuid.uuid4())
         local_input_path = None
         local_output_path = None
-        metadata = message.get('metadata', {})
-        cid = metadata.get('_id', '')
+        message = eval(message)
+        id = message.get('id', {})
 
         try:
             logger.info(f"Processing message: {message}")
@@ -202,15 +230,15 @@ class ProcessingService:
             #     details=message
             # )
             
-            logger.info(f"Successfully processed document for CID: {cid}")
+            logger.info(f"Successfully processed document for CID: {id}")
 
         except Exception as e:
             error_description = traceback.format_exc()
             logger.error(f"Error processing message: {str(e)}\n{error_description}")
             
             self.log_event(
-                service_name="ResumeService",
-                cid=cid,
+                service_name="InterviewReviewService",
+                cid=id,
                 organization="",
                 status=ProcessingStatus.FAILED,
                 details=message,
@@ -229,19 +257,35 @@ class ProcessingService:
     ) -> Dict[str, Any]:
         """Process a single document with enhanced path handling"""
 
-        request_id = message.get('request_id')
-        job_profile = message.get('job_profile')
-        candidate_name = message.get('candidate_name')
-        interview_question = message.get('interview_question')
-        interview_transcription = message.get('interview_transcription')
+        # request_id = message.get('request_id')
+        # job_profile = message.get('job_profile')
+        # candidate_name = message.get('candidate_name')
+        # interview_question = message.get('interview_question')
+        # interview_transcription = message.get('interview_transcription')
 
-        candidate_response = self.interview_service.generate_review(job_profile, candidate_name, interview_question, interview_transcription, request_id)
+        # candidate_response = self.interview_service.generate_review(job_profile, candidate_name, interview_question, interview_transcription, request_id)
         
-        # Store the candidate response in Redis without expiration
-        self.redis_client.client.hmset(f"interview_response:{request_id}", {
-            k: json.dumps(v) if isinstance(v, (dict, list)) else v 
-            for k, v in candidate_response.items()
-        })
+        # # Store the candidate response in Redis without expiration
+        # self.redis_client.client.hmset(f"interview_response:{request_id}", {
+        #     k: json.dumps(v) if isinstance(v, (dict, list)) else v 
+        #     for k, v in candidate_response.items()
+        # })
+        
+        service1 = InterviewQuestionReviewService()
+        service2 = InterviewOverallReviewService()
+        
+        question_level_list = list()
+        for interview_question_details in message["interview"]:
+            interview_question_review = service1.generate_review(interview_question_details)
+            question_level_list.append(interview_question_review)
+            
+        final_response = service2.generate_review(question_level_list)
+        
+        final_response["id"] = message["id"]
+        final_response["profile"] = message["profile"]        
+        
+        #Now save this full response using the api
+        send_ai_result(final_response)
         
         return True        
 

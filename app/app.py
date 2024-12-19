@@ -90,7 +90,7 @@ output_queue = RabbitMQClient(
 )
 
 @app.post("/submit-interview", dependencies=[Security(validate_api_key)], tags=["Interview Score Service"])
-async def submit_interview(request: InterviewSubmissionRequest):
+async def submit_interview(request):
     """
     Submit an interview for processing.
     
@@ -104,98 +104,97 @@ async def submit_interview(request: InterviewSubmissionRequest):
         HTTPException: If submission fails.
     """
     try:
-        # Validate request size
-        if len(request.interview_transcription) > SECURITY_CONSTANTS["MAX_REQUEST_BODY_SIZE"]:
-            raise HTTPException(status_code=413, detail="Request payload too large")
+        # # Validate request size
+        # if len(request.interview_transcription) > SECURITY_CONSTANTS["MAX_REQUEST_BODY_SIZE"]:
+        #     raise HTTPException(status_code=413, detail="Request payload too large")
         
-        # Prepare message for queue
-        message = {
-            "request_id": request.request_id,
-            "job_profile": request.job_profile,
-            "candidate_name": request.candidate_name,
-            "interview_question": request.interview_question,
-            "interview_transcription": request.interview_transcription
-        }
+        # # Prepare message for queue
+        # message = {
+        #     "request_id": request.request_id,
+        #     "job_profile": request.job_profile,
+        #     "candidate_name": request.candidate_name,
+        #     "interview_question": request.interview_question,
+        #     "interview_transcription": request.interview_transcription
+        # }
         
         # Send message to RabbitMQ
-        output_queue.publish_message(message)
+        output_queue.publish_message(request)
         
         return {
             "status": "success", 
             "message": "Interview submitted for processing",
-            "request_id": request.request_id
         }
     except Exception as e:
         logger.error(f"Interview submission error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/interview-response/{request_id}", dependencies=[Security(validate_api_key)], tags=["Interview Score Service"])
-async def get_interview_response(request_id: str):
-    """
-    Retrieve interview response by request ID.
+# @app.get("/interview-response/{request_id}", dependencies=[Security(validate_api_key)], tags=["Interview Score Service"])
+# async def get_interview_response(request_id: str):
+#     """
+#     Retrieve interview response by request ID.
     
-    Args:
-        request_id (str): Unique identifier for the interview response.
+#     Args:
+#         request_id (str): Unique identifier for the interview response.
     
-    Returns:
-        Dict[str, Any]: Parsed interview response.
+#     Returns:
+#         Dict[str, Any]: Parsed interview response.
     
-    Raises:
-        HTTPException: If response retrieval fails or no response found.
-    """
-    try:
-        # Retrieve Redis data
-        response_data = processing_service.redis_client.client.hgetall(f"interview_response:{request_id}")
+#     Raises:
+#         HTTPException: If response retrieval fails or no response found.
+#     """
+#     try:
+#         # Retrieve Redis data
+#         response_data = processing_service.redis_client.client.hgetall(f"interview_response:{request_id}")
         
-        # Check if response exists
-        if not response_data:
-            raise HTTPException(
-                status_code=404, 
-                detail=f"No interview response found for request ID: {request_id}"
-            )
+#         # Check if response exists
+#         if not response_data:
+#             raise HTTPException(
+#                 status_code=404, 
+#                 detail=f"No interview response found for request ID: {request_id}"
+#             )
         
-        # Parse and decode response
-        decoded_response: Dict[str, Any] = {}
-        for key, value in response_data.items():
-            try:
-                # Decode key and value
-                decoded_key = key.decode('utf-8')
-                decoded_value = value.decode('utf-8')
+#         # Parse and decode response
+#         decoded_response: Dict[str, Any] = {}
+#         for key, value in response_data.items():
+#             try:
+#                 # Decode key and value
+#                 decoded_key = key.decode('utf-8')
+#                 decoded_value = value.decode('utf-8')
                 
-                # Special handling for specific keys
-                if decoded_key == 'request_id':
-                    decoded_response[decoded_key] = decoded_value
-                else:
-                    try:
-                        # Attempt to parse JSON for complex types
-                        parsed_value = json.loads(decoded_value)
-                        decoded_response[decoded_key] = parsed_value
-                    except json.JSONDecodeError:
-                        # Fallback to string if JSON parsing fails
-                        decoded_response[decoded_key] = decoded_value
+#                 # Special handling for specific keys
+#                 if decoded_key == 'request_id':
+#                     decoded_response[decoded_key] = decoded_value
+#                 else:
+#                     try:
+#                         # Attempt to parse JSON for complex types
+#                         parsed_value = json.loads(decoded_value)
+#                         decoded_response[decoded_key] = parsed_value
+#                     except json.JSONDecodeError:
+#                         # Fallback to string if JSON parsing fails
+#                         decoded_response[decoded_key] = decoded_value
             
-            except Exception as decode_error:
-                # Log individual key decoding errors
-                logger.warning(f"Error decoding key: {key}. Error: {decode_error}")
+#             except Exception as decode_error:
+#                 # Log individual key decoding errors
+#                 logger.warning(f"Error decoding key: {key}. Error: {decode_error}")
         
-        # Log successful retrieval
-        logger.info(f"Successfully retrieved interview response for request ID: {request_id}")
+#         # Log successful retrieval
+#         logger.info(f"Successfully retrieved interview response for request ID: {request_id}")
         
-        return decoded_response
+#         return decoded_response
     
-    except HTTPException:
-        # Re-raise HTTP exceptions (like 404)
-        raise
+#     except HTTPException:
+#         # Re-raise HTTP exceptions (like 404)
+#         raise
     
-    except Exception as e:
-        # Log unexpected errors
-        logger.error(f"Unexpected error retrieving interview response: {e}", exc_info=True)
+#     except Exception as e:
+#         # Log unexpected errors
+#         logger.error(f"Unexpected error retrieving interview response: {e}", exc_info=True)
         
-        # Return a 500 internal server error
-        raise HTTPException(
-            status_code=500, 
-            detail="Internal server error occurred while retrieving interview response"
-        )
+#         # Return a 500 internal server error
+#         raise HTTPException(
+#             status_code=500, 
+#             detail="Internal server error occurred while retrieving interview response"
+#         )
         
 @app.post("/generate-interview-questions/",  tags=["Generate Interview Questions"] , dependencies=[Security(validate_api_key)])
 async def generate_questions(request: InterviewRequest):
