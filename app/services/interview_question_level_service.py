@@ -205,8 +205,8 @@ class InterviewOverallReviewService:
             "total_score": round(total_score, 2),
             "average_percentage": average_percentage,
             "overall_performance": overall_performance,
-            "technologies": list(technologies),
-            "tags": list(tags)
+            # "technologies": list(technologies),
+            # "tags": list(tags)
         }
 
         return result

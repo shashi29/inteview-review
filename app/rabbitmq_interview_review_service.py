@@ -204,7 +204,7 @@ class ProcessingService:
         message_id = str(uuid.uuid4())
         local_input_path = None
         local_output_path = None
-        message = eval(message)
+        #message = eval(message)
         id = message.get('id', {})
 
         try:
@@ -310,7 +310,7 @@ class ProcessingService:
 
     def start(self) -> None:
         """Start the OCR Processing Service"""
-        logger.info("Starting OCR Processing Service")
+        logger.info("Starting Interview Review Processing Service")
         self.input_queue.start_consumer(self.process_message)
 
     def check_health(self) -> bool:

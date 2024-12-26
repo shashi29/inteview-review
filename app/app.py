@@ -13,7 +13,24 @@ from generate_interview_question import InterviewQuestionService
 from utils.rabbitmq_utils import RabbitMQClient
 import logging
 import os
+from typing import List
+from pydantic import BaseModel, Field
 
+class InterviewQuestion(BaseModel):
+    qid: str = Field(..., description="Unique identifier for the question")
+    level: str = Field(..., description="Difficulty level of the question, e.g., intermediate or advanced")
+    technologies: List[str] = Field(..., description="List of technologies associated with the question")
+    tags: List[str] = Field(..., description="Tags describing the topic of the question")
+    point: int = Field(..., description="Point value of the question")
+    questionText: str = Field(..., description="The actual interview question")
+    questionExplanation: str = Field(..., description="Explanation or reasoning behind the question")
+    transcriptText: str = Field(..., description="Transcript or additional notes about the question")
+
+class InterviewProfile(BaseModel):
+    id: str = Field(..., description="Unique identifier for the profile")
+    profile: str = Field(..., description="Type of profile, e.g., student")
+    interview: List[InterviewQuestion] = Field(..., description="List of interview questions related to the profile")
+    
 # Security Constants
 SECURITY_CONSTANTS = {
     "API_KEY_HEADER_NAME": "X-API-Key",
@@ -39,22 +56,6 @@ class InterviewRequest(BaseModel):
     number_of_questions: Optional[int] = 3
     question_level: Optional[str] = "intermediate"
     
-class InterviewSubmissionRequest(BaseModel):
-    """
-    Pydantic model for interview submission request.
-    
-    Attributes:
-        request_id (str): Unique identifier for the submission.
-        job_profile (str): Profile for which interview is conducted.
-        candidate_name (str): Name of the candidate.
-        interview_question (str): Main interview question.
-        interview_transcription (str): Full transcription of the interview.
-    """
-    request_id: str
-    job_profile: str
-    candidate_name: str
-    interview_question: str
-    interview_transcription: str
 
 # API Key authentication
 api_key_header = APIKeyHeader(name=SECURITY_CONSTANTS["API_KEY_HEADER_NAME"])
@@ -90,7 +91,7 @@ output_queue = RabbitMQClient(
 )
 
 @app.post("/submit-interview", dependencies=[Security(validate_api_key)], tags=["Interview Score Service"])
-async def submit_interview(request):
+async def submit_interview(request: InterviewProfile):
     """
     Submit an interview for processing.
     
@@ -104,21 +105,11 @@ async def submit_interview(request):
         HTTPException: If submission fails.
     """
     try:
-        # # Validate request size
-        # if len(request.interview_transcription) > SECURITY_CONSTANTS["MAX_REQUEST_BODY_SIZE"]:
-        #     raise HTTPException(status_code=413, detail="Request payload too large")
+        # Convert the Pydantic model to a dictionary
+        message_data = request.dict()
         
-        # # Prepare message for queue
-        # message = {
-        #     "request_id": request.request_id,
-        #     "job_profile": request.job_profile,
-        #     "candidate_name": request.candidate_name,
-        #     "interview_question": request.interview_question,
-        #     "interview_transcription": request.interview_transcription
-        # }
-        
-        # Send message to RabbitMQ
-        output_queue.publish_message(request)
+        # Send the serialized message to RabbitMQ
+        output_queue.publish_message(message_data)
         
         return {
             "status": "success", 
