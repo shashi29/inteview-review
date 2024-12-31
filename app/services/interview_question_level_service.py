@@ -244,6 +244,40 @@ class InterviewOverallReviewService:
         
         return result
 
+    def add_average_scoring(self, data):
+        # Access the list of individual results
+        individual_results = data.get('individual_result', [])
+        
+        if not individual_results:
+            # No individual results to calculate averages from
+            return data  # Return the data as is
+        
+        # Collect all scoring dictionaries
+        scorings = [result['scoring'] for result in individual_results if 'scoring' in result]
+        
+        if not scorings:
+            # No scoring data available
+            return data  # Return the data as is
+        
+        # Determine the scoring keys
+        scoring_keys = scorings[0].keys()
+        
+        # Calculate the sum for each scoring key
+        sum_scores = {key: 0 for key in scoring_keys}
+        for scoring in scorings:
+            for key in scoring_keys:
+                sum_scores[key] += scoring[key]
+        
+        # Calculate the average for each scoring key
+        count = len(scorings)
+        average_scoring = {key: sum_scores[key] / count for key in scoring_keys}
+        
+        # Add the 'scoring' key to 'overall_result'
+        overall_result = data.get('overall_result', {})
+        overall_result['scoring'] = average_scoring
+        data['overall_result'] = overall_result
+        return data
+
     def generate_review(self, interview_question_details):
 
         # If not in cache, generate the review
@@ -259,6 +293,7 @@ class InterviewOverallReviewService:
         final_response["overall_result"] = overall_result
         final_response["overall_result"]["summary"] = review["summary"]
         final_response["overall_result"]["recommendation"] = review["recommendation"]
+        final_response = self.add_average_scoring(final_response)
         
         return final_response
 
