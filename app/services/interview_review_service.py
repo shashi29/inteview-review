@@ -75,7 +75,7 @@ class InterviewReviewService:
         self.parser = JsonOutputParser(pydantic_object=InterviewReview)
         
         self.prompt = PromptTemplate(
-            template="""Analyze the provided interview question and transcript for the candidate applying for the specified job position. Provide a comprehensive evaluation based on the given information.
+            template="""You are an expert interview evaluator. Analyze the provided interview transcript comprehensively based on the candidate's response to the specific interview question for the given job position.
 
             {format_instructions}
 
@@ -84,8 +84,105 @@ class InterviewReviewService:
             Interview Question: {interview_question}
             Transcript: {interview_transcription}
 
-            Ensure all scores are on a scale of 1-5. The overall_score should be an average of the other scores, rounded to one decimal place. Include an assessment of how well the candidate understood and addressed the specific interview question.
-            Return output in json format only.
+            ## Analysis Framework:
+
+            ### 1. Question Relevance & Answer Completeness
+            - Evaluate how directly the candidate addressed the specific question asked
+            - Assess whether they understood what was being asked
+            - Note if they provided concrete examples or remained too abstract
+            - Check if they answered all parts of multi-part questions
+
+            ### 2. Content Analysis
+            Provide detailed analysis including:
+            - **depth**: How thoroughly did they explore the topic?
+            - **accuracy**: Were their statements factually correct?
+            - **specificity**: Did they provide concrete examples or details?
+            - **structure**: Was their response well-organized and logical?
+
+            ### 3. Communication Skills
+            Evaluate and score:
+            - **clarity**: How clearly did they express their thoughts?
+            - **articulation**: Were they easy to understand?
+            - **listening**: Did they demonstrate good listening skills?
+            - **responsiveness**: How well did they respond to follow-up questions?
+
+            ### 4. Critical Thinking
+            Assess:
+            - **problem_solving**: How did they approach complex issues?
+            - **analysis**: Did they break down problems systematically?
+            - **creativity**: Did they show innovative thinking?
+            - **reasoning**: Was their logic sound and well-supported?
+
+            ### 5. Professional Demeanor
+            Evaluate:
+            - **confidence**: Were they appropriately confident without being arrogant?
+            - **enthusiasm**: Did they show genuine interest in the role?
+            - **composure**: How did they handle pressure or challenging questions?
+            - **professionalism**: Did they maintain appropriate professional boundaries?
+
+            ### 6. Technical Proficiency
+            For the given job profile, assess:
+            - **knowledge_depth**: How deep is their understanding of relevant concepts?
+            - **practical_experience**: Did they demonstrate hands-on experience?
+            - **current_awareness**: Are they up-to-date with industry trends?
+            - **application**: Can they apply their knowledge to real scenarios?
+
+            ### 7. Soft Skills
+            Evaluate:
+            - **teamwork**: How do they approach collaboration?
+            - **leadership**: Do they show leadership potential?
+            - **adaptability**: How flexible are they with changing requirements?
+            - **emotional_intelligence**: Do they show self-awareness and empathy?
+
+            ### 8. Cultural Fit
+            Assess:
+            - **values_alignment**: Do their values align with typical organizational values?
+            - **work_style**: How does their work style match the role requirements?
+            - **motivation**: What drives them and does it align with the position?
+            - **growth_mindset**: Do they show desire for continuous learning?
+
+            ## Scoring Guidelines (1-5 scale):
+            - **5 - Exceptional**: Far exceeds expectations, demonstrates mastery
+            - **4 - Strong**: Exceeds expectations in most areas
+            - **3 - Satisfactory**: Meets expectations, solid performance
+            - **2 - Below Average**: Falls short of expectations in several areas
+            - **1 - Poor**: Significantly below expectations, major concerns
+
+            ## Required Output Structure:
+
+            ### Scoring Dictionary must include:
+            - question_relevance_score
+            - answer_completeness_score
+            - communication_score
+            - critical_thinking_score
+            - professional_demeanor_score
+            - technical_proficiency_score (rate based on job requirements)
+            - soft_skills_score
+            - cultural_fit_score
+            - overall_score (calculated as weighted average)
+
+            ### Areas for Improvement:
+            Provide 3-5 specific, actionable recommendations for the candidate.
+
+            ### Summary:
+            Include:
+            - **strengths**: Top 2-3 strengths demonstrated
+            - **weaknesses**: Top 2-3 areas needing improvement
+            - **key_insights**: Important observations about the candidate
+            - **interview_highlights**: Notable moments or responses
+
+            ### Recommendation:
+            Choose one: "Strongly Recommend", "Recommend", "Consider with Reservations", "Do Not Recommend"
+            Provide a brief justification (2-3 sentences) for your recommendation.
+
+            ## Important Notes:
+            - Be objective and evidence-based in your evaluation
+            - Consider the specific requirements of the job profile
+            - Look for both verbal and implied communication
+            - Note any red flags or concerning patterns
+            - Be constructive in feedback while being honest about weaknesses
+
+            Return output in JSON format only, strictly following the provided schema.
             """,
             input_variables=["candidate_name", "job_profile", "interview_question", "interview_transcription"],
             partial_variables={"format_instructions": self.parser.get_format_instructions()}

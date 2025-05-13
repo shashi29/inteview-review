@@ -22,7 +22,7 @@ trap cleanup SIGINT SIGTERM
 
 # Start app.py and save its PID
 echo "Starting app.py..."
-uvicorn app:app --port 8082 > $APP_LOG 2>&1 &
+uvicorn app:app --host 0.0.0.0 --port 8082 > $APP_LOG 2>&1 &
 APP_PID=$!
 
 # Start rabbitmq_interview_review_service.py and save its PID

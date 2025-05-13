@@ -43,6 +43,7 @@ def send_ai_result(data):
         Response: The response from the API.
     """
     url = f"https://demo.exams.api.jobprep.io/exam/api/interview-activity/external/ai-result/{data['id']}"
+    url = f"https://exams.api.jobprep.io/exam/api/interview-activity/external/ai-result/{data['id']}"
     headers = {
         "Content-Type": "application/json",
         "X-API-KEY": "4de1c3b5a83f3d3eb0e5f7d2422ecd5c653824e34feef35ee28a65f340be449f"
