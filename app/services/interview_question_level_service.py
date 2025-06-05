@@ -46,25 +46,98 @@ class InterviewQuestionReviewService:
         self.parser = JsonOutputParser(pydantic_object=InterviewReview)
         
         self.prompt = PromptTemplate(
-            template="""Analyze the provided interview question and transcript for the candidate . Provide a comprehensive evaluation based on the given information.
+            template="""You are an expert interview evaluator. Analyze the provided interview question and transcript for the candidate comprehensively and objectively.
+
+            IMPORTANT INSTRUCTIONS:
+            1. If the transcript is empty, very short (less than 10 words), or contains no meaningful response, clearly identify this in your analysis
+            2. For empty/inadequate responses, assign scores of 0-2 and explain the lack of response
+            3. For substantial responses, evaluate thoroughly using the full 1-10 scale
+            4. Be specific and detailed in your analysis - avoid generic feedback
+            5. Consider the interview level and technologies when setting expectations
+
+            EVALUATION CONTEXT:
+            - Technologies: {interview_technologies}
+            - Tags: {interview_tags}
+            - Level: {interview_level}
+            - Interview Question: {interview_question}
+            - Interview Question Explanation: {interview_question_explanation}
+            - Candidate Response/Transcript: {interview_transcription}
+
+            SCORING GUIDELINES (1-10 scale):
+            - 0-2: No response, completely inadequate, or completely incorrect
+            - 3-4: Minimal effort, major gaps, fundamentally flawed understanding
+            - 5-6: Basic understanding but incomplete, several important issues
+            - 7-8: Good response with minor gaps, demonstrates solid understanding
+            - 9-10: Excellent, comprehensive, demonstrates deep understanding and expertise
+
+            ANALYSIS REQUIREMENTS:
+            1. Question Relevance: Does the response directly address what was asked?
+            2. Answer Completeness: How thoroughly does the response cover all aspects?
+            3. Content Analysis: Evaluate technical accuracy, depth, and examples provided
+            4. Communication Skills: Clarity, structure, and articulation of ideas
+            5. Critical Thinking: Evidence of analytical reasoning and problem-solving
+            6. Professional Demeanor: Appropriateness and professionalism in response
+            7. Technical Proficiency: Demonstration of relevant technical knowledge for the level
+            8. Soft Skills: Evidence of collaboration, adaptability, and interpersonal skills
+            9. Cultural Fit: Alignment with professional values and team dynamics
+
+            SPECIFIC REQUIREMENTS:
+            - If transcript is empty/inadequate: Explicitly state "No response provided" or "Inadequate response" in relevant analysis fields
+            - For each scoring category, provide specific reasoning based on the actual content (or lack thereof)
+            - Areas for improvement should be actionable and specific to the candidate's performance
+            - Consider the interview level when evaluating - junior candidates aren't expected to have senior-level expertise
 
             {format_instructions}
 
-            Technologies: {interview_technologies}
-            Tags: {interview_tags}
-            Level: {interview_level}
-            Interview Question: {interview_question}
-            Interview Question Explanation: {interview_question_explanation}
-            Transcript: {interview_transcription}
-
-            Ensure all scores are on a scale of 1-10. Include an assessment of how well the candidate understood and addressed the specific interview question.
-            Return output in json format only.
+            Return output in JSON format only. Ensure all scores reflect the actual quality of the response, with 0-2 for no/poor responses and higher scores only for genuinely good responses.
             """,
             input_variables=["interview_technologies", "interview_tags", "interview_level", "interview_question", "interview_question_explanation", "interview_transcription"],
             partial_variables={"format_instructions": self.parser.get_format_instructions()}
         )
         
         self.chain = self.prompt | self.model | self.parser
+
+    def _is_transcript_empty(self, transcript_text: str) -> bool:
+        """Check if transcript is empty or contains only whitespace/minimal content."""
+        if not transcript_text or not transcript_text.strip():
+            return True
+        # Consider transcript empty if it's too short to be meaningful
+        return len(transcript_text.strip()) < 10
+
+    def _generate_empty_review(self, interview_question_details) -> dict:
+        """Generate a default review for empty transcripts."""
+        return {
+            "interview_question": interview_question_details["questionText"],
+            "transcript_analysis": {
+                "question_relevance": "No response provided",
+                "answer_completeness": "No response provided", 
+                "content_analysis": "No response provided",
+                "communication_skills": "No response provided",
+                "critical_thinking": "No response provided",
+                "professional_demeanor": "No response provided",
+                "technical_proficiency": "No response provided",
+                "soft_skills": "No response provided",
+                "cultural_fit": "No response provided"
+            },
+            "areas_for_improvement": ["Provide a response to the interview question"],
+            "scoring": {
+                "question_relevance": 0,
+                "answer_completeness": 0,
+                "content_analysis": 0,
+                "communication_skills": 0,
+                "critical_thinking": 0,
+                "professional_demeanor": 0,
+                "technical_proficiency": 0,
+                "soft_skills": 0,
+                "cultural_fit": 0
+            },
+            "average_points": 0.0,
+            "average_percentage": 0.0,
+            "qid": interview_question_details["qid"],
+            "level": interview_question_details["level"],
+            "technologies": interview_question_details["technologies"],
+            "tags": interview_question_details["tags"]
+        }
         
 
     def calculate_scores(self, scoring_data, question_points, max_score_per_category=10):
@@ -91,9 +164,9 @@ class InterviewQuestionReviewService:
         return average_points, average_percentage
 
     def generate_review(self, interview_question_details) -> InterviewReview:
-
-        # If not in cache, generate the review
-        logger.info("Generating new review using API")
+        # Always make API call - let the improved prompt handle empty transcripts intelligently
+        logger.info("Generating review using API with enhanced analysis")
+        
         review = self.chain.invoke({
             "interview_technologies":interview_question_details["technologies"], 
             "interview_tags":interview_question_details["tags"], 
@@ -132,19 +205,72 @@ class InterviewOverallReviewService:
         self.parser = JsonOutputParser(pydantic_object=InterviewOverallReview)
         
         self.prompt = PromptTemplate(
-            template="""Analyze the provided interview review for the candidate . Provide a comprehensive evaluation based on the given information.
+            template="""You are an expert interview analyst. Analyze the provided interview reviews and create a comprehensive overall evaluation of the candidate's performance.
+
+            IMPORTANT INSTRUCTIONS:
+            1. Synthesize information from all individual interview question reviews
+            2. Identify patterns across multiple responses (consistency, growth, areas of strength/weakness)
+            3. If most responses were empty/inadequate, reflect this in your overall assessment
+            4. Provide specific, actionable recommendations based on actual performance observed
+            5. Consider the candidate's overall trajectory and potential
+
+            ANALYSIS CONTEXT:
+            {candidate_interview_review}
+
+            EVALUATION REQUIREMENTS:
+            1. Summary: Provide 3-5 key observations about the candidate's overall performance
+               - Highlight strengths demonstrated across responses
+               - Note consistent patterns or issues
+               - Comment on overall engagement level
+               - Assess readiness for the role based on evidence
+
+            2. Areas for Improvement: List specific, actionable areas where the candidate can grow
+               - Base recommendations on actual gaps observed in responses
+               - Prioritize the most critical improvements needed
+               - Provide constructive, specific guidance
+               - If no responses were given, focus on interview participation and preparation
+
+            3. Recommendation: Provide a clear, evidence-based recommendation
+               - Strong Hire: Excellent performance across multiple areas, ready for role
+               - Hire: Good performance with minor gaps, likely to succeed with support
+               - No Hire: Significant gaps or concerns that outweigh strengths
+               - No Assessment Possible: Insufficient responses to make a determination
+
+            QUALITY STANDARDS:
+            - Be specific and evidence-based in all assessments
+            - Avoid generic feedback - reference actual performance patterns
+            - Balance honesty about gaps with constructive guidance
+            - Consider the cumulative evidence across all interview questions
+            - Ensure recommendations align with observed performance levels
 
             {format_instructions}
 
-            Candidate Interview Review: {candidate_interview_review}
-            
-            Return output in json format only.
+            Return output in JSON format only. Ensure your analysis accurately reflects the candidate's actual performance across all interview responses.
             """,
             input_variables=["candidate_interview_review"],
             partial_variables={"format_instructions": self.parser.get_format_instructions()}
         )
         
         self.chain = self.prompt | self.model | self.parser
+
+    def _has_meaningful_content(self, data: List[Dict]) -> bool:
+        """Check if any individual results have meaningful content (non-zero scores)."""
+        return any(
+            result.get('average_percentage', 0) > 0 
+            for result in data
+        )
+
+    def _generate_empty_overall_review(self) -> dict:
+        """Generate a default overall review when no meaningful responses exist."""
+        return {
+            "summary": ["No responses provided to interview questions"],
+            "areas_for_improvement": [
+                "Participate actively in the interview",
+                "Provide responses to interview questions",
+                "Demonstrate engagement with the interview process"
+            ],
+            "recommendation": "Cannot recommend based on lack of participation"
+        }
         
 
     def calculate_performance(self, average_percentage: float) -> str:
@@ -279,13 +405,17 @@ class InterviewOverallReviewService:
         return data
 
     def generate_review(self, interview_question_details):
-
-        # If not in cache, generate the review
-        logger.info("Generating new review using API")
-        candidate_interview_review = self.extract_interview_details(interview_question_details)
-        review = self.chain.invoke({
-            "candidate_interview_review":candidate_interview_review
-        })
+        # Check if there's meaningful content before making API call
+        if not self._has_meaningful_content(interview_question_details):
+            logger.info("No meaningful content detected, skipping overall API call")
+            review = self._generate_empty_overall_review()
+        else:
+            # If not in cache, generate the review
+            logger.info("Generating new review using API")
+            candidate_interview_review = self.extract_interview_details(interview_question_details)
+            review = self.chain.invoke({
+                "candidate_interview_review":candidate_interview_review
+            })
         
         final_response = dict()
         overall_result = self.extract_and_process_interview_data(interview_question_details)
@@ -296,7 +426,6 @@ class InterviewOverallReviewService:
         final_response = self.add_average_scoring(final_response)
         
         return final_response
-
 
 if __name__ == "__main__":
     service1 = InterviewQuestionReviewService()

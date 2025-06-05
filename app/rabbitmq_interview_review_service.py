@@ -285,6 +285,7 @@ class ProcessingService:
         final_response["id"] = message["id"]
         final_response["profile"] = message["profile"]        
         
+        logger.info(f"Final response generated: {final_response}")
         #Now save this full response using the api
         send_ai_result(final_response)
         
